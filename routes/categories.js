@@ -2,14 +2,25 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db');
 const authMiddleware = require('../middleware/authMiddleware');
+const { createDefaultCategories } = require('../utils/defaults');
 
 // Get all categories for a user
 router.get('/', authMiddleware, async (req, res) => {
   try {
-    const categories = await pool.query(
+    let categories = await pool.query(
       'SELECT * FROM categories WHERE user_id = $1',
       [req.user.user.id]
     );
+
+    // If no categories, initialize defaults and re-fetch
+    if (categories.rows.length === 0) {
+      await createDefaultCategories(req.user.user.id);
+      categories = await pool.query(
+        'SELECT * FROM categories WHERE user_id = $1',
+        [req.user.user.id]
+      );
+    }
+
     res.json(categories.rows);
   } catch (err) {
     console.error(err.message);

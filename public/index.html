@@ -1,223 +1,251 @@
 <!DOCTYPE html>
-<html lang="en">
-
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Personal Finance Tracker</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <title>Personal Finance Tracker | Premium</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --bg-color: #0f172a;
-            --text-color: #f8fafc;
-            --card-bg: #1e293b;
-            --primary: #3b82f6;
-            --success: #10b981;
-            --danger: #ef4444;
-            --border: #334155;
-        }
-
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            margin: 0;
-            padding: 0;
-            display: flex;
-            justify-content: center;
-        }
-
-        .container {
-            width: 100%;
-            max-width: 800px;
-            padding: 2rem;
-        }
-
-        h1,
-        h2 {
-            text-align: center;
-            font-weight: 600;
-        }
-
-        .card {
-            background: var(--card-bg);
-            padding: 2rem;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            margin-bottom: 2rem;
-            border: 1px solid var(--border);
-        }
-
-        input,
-        select,
-        button {
-            width: 100%;
-            padding: 0.75rem;
-            margin-bottom: 1rem;
-            border-radius: 8px;
-            border: 1px solid var(--border);
-            background: var(--bg-color);
-            color: var(--text-color);
-            box-sizing: border-box;
-            font-family: 'Inter', sans-serif;
-        }
-
-        button {
-            background: var(--primary);
-            color: white;
-            font-weight: 600;
-            cursor: pointer;
-            border: none;
-            transition: background 0.2s ease;
-        }
-
-        button:hover {
-            background: #2563eb;
-        }
-
-        .grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 1rem;
-            text-align: center;
-        }
-
-        .stat {
-            background: var(--bg-color);
-            padding: 1.5rem;
-            border-radius: 8px;
-            border: 1px solid var(--border);
-        }
-
-        .stat h3 {
-            margin: 0 0 0.5rem 0;
-            font-size: 1rem;
-            color: #94a3b8;
-        }
-
-        .stat p {
-            margin: 0;
-            font-size: 1.5rem;
-            font-weight: 600;
-        }
-
-        .success {
-            color: var(--success);
-        }
-
-        .danger {
-            color: var(--danger);
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 1rem;
-        }
-
-        th,
-        td {
-            padding: 0.75rem;
-            text-align: left;
-            border-bottom: 1px solid var(--border);
-        }
-
-        th {
-            color: #94a3b8;
-            font-weight: 400;
-        }
-
-        .hidden {
-            display: none;
-        }
+        body { font-family: 'Outfit', sans-serif; }
+        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .success-gradient { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+        .danger-gradient { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); }
+        .primary-gradient { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
     </style>
 </head>
+<body class="bg-[#0f172a] text-slate-200 min-h-screen">
 
-<body>
-
-    <div class="container">
-        <h1>Personal Finance Tracker</h1>
-
-        <div id="auth-section" class="card">
-            <h2>Login / Register</h2>
-            <input type="email" id="email" placeholder="Email" />
-            <input type="password" id="password" placeholder="Password" />
-            <button onclick="login()">Login</button>
-            <button onclick="register()"
-                style="background: var(--card-bg); border: 1px solid var(--primary); color: var(--primary);">Register</button>
-            <hr style="border: 0; border-top: 1px solid var(--border); margin: 1rem 0;">
-            <button onclick="window.location.href='/api/auth/google'" style="background: #db4437;">Login with
-                Google</button>
-        </div>
-
-        <div id="app-section" class="hidden">
-            <div class="card">
-                <button onclick="logout()"
-                    style="float: right; width: auto; background: transparent; color: var(--danger); border: none;">Logout</button>
-                <h2>Dashboard</h2>
-                <div class="grid">
-                    <div class="stat">
-                        <h3>Total Income</h3>
-                        <p id="total-income" class="success">$0.00</p>
-                    </div>
-                    <div class="stat">
-                        <h3>Total Expenses</h3>
-                        <p id="total-expense" class="danger">$0.00</p>
-                    </div>
-                    <div class="stat">
-                        <h3>Balance</h3>
-                        <p id="balance">$0.00</p>
-                    </div>
+    <!-- Auth Section -->
+    <div id="auth-section" class="flex items-center justify-center min-h-screen p-6">
+        <div class="glass w-full max-w-md p-8 rounded-2xl shadow-2xl">
+            <div class="text-center mb-8">
+                <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl primary-gradient mb-4">
+                    <i data-lucide="wallet" class="text-white w-8 h-8"></i>
                 </div>
+                <h1 class="text-3xl font-bold text-white mb-2">Welcome Back</h1>
+                <p class="text-slate-400">Manage your wealth with precision</p>
             </div>
-
-            <div class="card">
-                <h2>Add Transaction</h2>
-                <form id="transaction-form" onsubmit="event.preventDefault(); addTransaction();">
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                        <input type="number" id="t-amount" placeholder="Amount" step="0.01" required />
-                        <select id="t-currency">
-                            <option value="USD">USD</option>
-                            <option value="EUR">EUR</option>
-                            <option value="INR">INR</option>
-                            <option value="GBP">GBP</option>
-                        </select>
-                    </div>
-                    <input type="text" id="t-desc" placeholder="Description" required />
-                    <input type="date" id="t-date" required />
-                    <select id="t-category">
-                        <option value="">Select Category</option>
-                    </select>
-                    <div style="margin-bottom: 1rem;">
-                        <label for="t-receipt" style="display: block; margin-bottom: 0.5rem; color: #94a3b8;">Upload
-                            Receipt</label>
-                        <input type="file" id="t-receipt" accept="image/*,application/pdf" style="padding: 0.5rem;" />
-                    </div>
-                    <button type="submit">Add Transaction</button>
-                </form>
-            </div>
-
-            <div class="card">
-                <h2>Recent Transactions</h2>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Description</th>
-                            <th>Category</th>
-                            <th>Amount</th>
-                            <th>Receipt</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="transactions-list"></tbody>
-                </table>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-400 mb-1">Email Address</label>
+                    <input type="email" id="email" class="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="name@example.com">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-400 mb-1">Password</label>
+                    <input type="password" id="password" class="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="••••••••">
+                </div>
+                <button onclick="login()" class="w-full primary-gradient text-white font-semibold py-3 rounded-xl hover:opacity-90 transition-all shadow-lg">Sign In</button>
+                <div class="relative py-4">
+                    <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-slate-700"></div></div>
+                    <div class="relative flex justify-center text-sm"><span class="px-2 bg-[#0f172a] text-slate-500">Or continue with</span></div>
+                </div>
+                <button onclick="window.location.href='/api/auth/google'" class="w-full bg-white text-slate-900 font-semibold py-3 rounded-xl hover:bg-slate-100 transition-all flex items-center justify-center gap-2">
+                    <img src="https://www.google.com/favicon.ico" class="w-4 h-4" alt="Google">
+                    Google Account
+                </button>
+                <p class="text-center text-sm text-slate-500 mt-6">
+                    Don't have an account? <a href="#" onclick="register()" class="text-blue-400 hover:underline">Register now</a>
+                </p>
             </div>
         </div>
     </div>
 
+    <!-- App Section -->
+    <div id="app-section" class="hidden pb-12">
+        <!-- Navbar -->
+        <nav class="glass sticky top-0 z-50 px-6 py-4 mb-8">
+            <div class="max-w-7xl mx-auto flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                    <div class="p-2 primary-gradient rounded-lg">
+                        <i data-lucide="activity" class="text-white w-5 h-5"></i>
+                    </div>
+                    <span class="text-xl font-bold text-white">FinanceTracker</span>
+                </div>
+                <div class="flex items-center gap-6">
+                    <div class="text-right hidden sm:block">
+                        <p class="text-sm font-medium text-white" id="user-name">User</p>
+                        <p class="text-xs text-slate-400" id="user-email">email@example.com</p>
+                    </div>
+                    <button onclick="logout()" class="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-red-400 transition-colors">
+                        <i data-lucide="log-out" class="w-5 h-5"></i>
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <main class="max-w-7xl mx-auto px-6">
+            <!-- Stats Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="glass p-6 rounded-2xl relative overflow-hidden group">
+                    <div class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <i data-lucide="trending-up" class="w-16 h-16 text-emerald-400"></i>
+                    </div>
+                    <p class="text-slate-400 text-sm mb-1">Total Income</p>
+                    <h3 class="text-3xl font-bold text-emerald-400" id="total-income">$0.00</h3>
+                </div>
+                <div class="glass p-6 rounded-2xl relative overflow-hidden group">
+                    <div class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <i data-lucide="trending-down" class="w-16 h-16 text-red-400"></i>
+                    </div>
+                    <p class="text-slate-400 text-sm mb-1">Total Expenses</p>
+                    <h3 class="text-3xl font-bold text-red-400" id="total-expense">$0.00</h3>
+                </div>
+                <div class="glass p-6 rounded-2xl relative overflow-hidden group">
+                    <div class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <i data-lucide="banknote" class="w-16 h-16 text-blue-400"></i>
+                    </div>
+                    <p class="text-slate-400 text-sm mb-1">Net Balance</p>
+                    <h3 class="text-3xl font-bold text-white" id="balance">$0.00</h3>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Main Content (Left) -->
+                <div class="lg:col-span-2 space-y-8">
+                    <!-- Charts -->
+                    <div class="glass p-6 rounded-2xl">
+                        <h2 class="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                            <i data-lucide="pie-chart" class="text-blue-400 w-5 h-5"></i>
+                            Financial Overview
+                        </h2>
+                        <div class="h-64">
+                            <canvas id="mainChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Transactions -->
+                    <div class="glass p-6 rounded-2xl">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                                <i data-lucide="list" class="text-blue-400 w-5 h-5"></i>
+                                Recent Transactions
+                            </h2>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full">
+                                <thead>
+                                    <tr class="text-slate-500 text-sm text-left border-b border-slate-800">
+                                        <th class="pb-4 font-medium">Date</th>
+                                        <th class="pb-4 font-medium">Details</th>
+                                        <th class="pb-4 font-medium">Category</th>
+                                        <th class="pb-4 font-medium">Amount</th>
+                                        <th class="pb-4 font-medium">Receipt</th>
+                                        <th class="pb-4 font-medium"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="transactions-list" class="text-sm">
+                                    <!-- Dynamic rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sidebar (Right) -->
+                <div class="space-y-8">
+                    <!-- AI Advisor -->
+                    <div class="glass p-6 rounded-2xl border-l-4 border-purple-500 relative overflow-hidden">
+                        <div class="absolute right-0 top-0 p-2 opacity-10">
+                            <i data-lucide="sparkles" class="w-12 h-12 text-purple-400"></i>
+                        </div>
+                        <h2 class="text-xl font-bold text-white mb-2 flex items-center gap-2">
+                            AI Financial Advisor
+                            <span class="text-[10px] bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded-full uppercase tracking-tighter">BETA</span>
+                        </h2>
+                        <p class="text-slate-400 text-sm mb-4">Get personalized insights based on your spending patterns.</p>
+                        <button onclick="getAIAnalysis()" id="ai-btn" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 rounded-xl transition-all flex items-center justify-center gap-2">
+                            <i data-lucide="brain-circuit" class="w-4 h-4"></i>
+                            Analyze My Finances
+                        </button>
+                        <div id="ai-result" class="hidden mt-4 p-4 bg-slate-900/50 rounded-xl border border-slate-700 text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">
+                            <!-- AI content goes here -->
+                        </div>
+                    </div>
+
+                    <!-- Bank Import -->
+                    <div class="glass p-6 rounded-2xl border-l-4 border-emerald-500 relative overflow-hidden">
+                        <div class="absolute right-0 top-0 p-2 opacity-10">
+                            <i data-lucide="file-up" class="w-12 h-12 text-emerald-400"></i>
+                        </div>
+                        <h2 class="text-xl font-bold text-white mb-2 flex items-center gap-2">
+                            Bank Statement Import
+                        </h2>
+                        <p class="text-slate-400 text-sm mb-4 text-center">Upload a CSV to auto-import your bank transactions.</p>
+                        <div class="space-y-4">
+                            <input type="file" id="csv-file" accept=".csv" class="w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-500 file:text-white hover:file:bg-emerald-600 transition-all">
+                            <button onclick="importCSV()" id="import-btn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-xl transition-all flex items-center justify-center gap-2">
+                                <i data-lucide="upload-cloud" class="w-4 h-4"></i>
+                                Start Import
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Add Transaction -->
+                    <div class="glass p-6 rounded-2xl border-l-4 border-blue-500">
+                        <h2 class="text-xl font-bold text-white mb-6">Add Transaction</h2>
+                        <form id="transaction-form" onsubmit="event.preventDefault(); addTransaction();" class="space-y-4">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs text-slate-500 mb-1 uppercase tracking-wider">Amount</label>
+                                    <input type="number" id="t-amount" class="w-full bg-slate-900/50 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm" step="0.01" required>
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-slate-500 mb-1 uppercase tracking-wider">Currency</label>
+                                    <select id="t-currency" class="w-full bg-slate-900/50 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm">
+                                        <option value="USD">USD</option>
+                                        <option value="EUR">EUR</option>
+                                        <option value="INR">INR</option>
+                                        <option value="GBP">GBP</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-500 mb-1 uppercase tracking-wider">Description</label>
+                                <input type="text" id="t-desc" class="w-full bg-slate-900/50 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm" required>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-500 mb-1 uppercase tracking-wider">Date</label>
+                                <input type="date" id="t-date" class="w-full bg-slate-900/50 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm" required>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-500 mb-1 uppercase tracking-wider">Category</label>
+                                <select id="t-category" class="w-full bg-slate-900/50 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm" required>
+                                    <option value="">Select Category</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-500 mb-1 uppercase tracking-wider">Receipt</label>
+                                <input type="file" id="t-receipt" class="w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-500 file:text-white hover:file:bg-blue-600 transition-all">
+                            </div>
+                            <button type="submit" class="w-full primary-gradient text-white font-bold py-3 rounded-xl mt-4 shadow-lg shadow-blue-500/20">Record Transaction</button>
+                        </form>
+                    </div>
+
+                    <!-- Budgets -->
+                    <div class="glass p-6 rounded-2xl">
+                        <h2 class="text-xl font-bold text-white mb-6">Budgets</h2>
+                        <div id="budgets-list" class="space-y-4">
+                            <!-- Budget items -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
     <script>
-        // Check for token in URL (from Google OAuth callback)
+        // Lucide icons
+        lucide.createIcons();
+
+        // Auth token logic
         const urlParams = new URLSearchParams(window.location.search);
         const urlToken = urlParams.get('token');
         if (urlToken) {
@@ -227,26 +255,21 @@
 
         let token = localStorage.getItem('token');
         const api = '/api';
+        let mainChart = null;
 
-        if (token) {
-            showApp();
-        }
+        if (token) showApp();
 
         async function req(path, method = 'GET', body = null, isFormData = false) {
             const headers = {};
             if (token) headers['Authorization'] = `Bearer ${token}`;
-
             const opts = { method, headers };
-
             if (body) {
-                if (isFormData) {
-                    opts.body = body;
-                } else {
+                if (isFormData) opts.body = body;
+                else {
                     headers['Content-Type'] = 'application/json';
                     opts.body = JSON.stringify(body);
                 }
             }
-
             const res = await fetch(`${api}${path}`, opts);
             if (res.status === 401) logout();
             return res.json();
@@ -260,20 +283,15 @@
                 token = data.token;
                 localStorage.setItem('token', token);
                 showApp();
-            } else {
-                alert(data.error);
-            }
+            } else alert(data.error);
         }
 
         async function register() {
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             const data = await req('/auth/register', 'POST', { name: email.split('@')[0], email, password });
-            if (data.id) {
-                alert('Registered! Please log in.');
-            } else {
-                alert(data.error || 'Registration failed');
-            }
+            if (data.id) alert('Account created! Sign in now.');
+            else alert(data.error || 'Registration failed');
         }
 
         function logout() {
@@ -286,22 +304,95 @@
         async function showApp() {
             document.getElementById('auth-section').classList.add('hidden');
             document.getElementById('app-section').classList.remove('hidden');
-            await loadCategories();
-            await loadDashboard();
-            await loadTransactions();
+            
+            // Set date constraints
+            const today = new Date().toISOString().split('T')[0];
+            const dateInput = document.getElementById('t-date');
+            if (dateInput) {
+                dateInput.value = today;
+                dateInput.max = today;
+            }
+
+            const profile = await req('/auth/profile');
+            if (profile) {
+                document.getElementById('user-name').innerText = profile.name;
+                document.getElementById('user-email').innerText = profile.email;
+            }
+            await refreshData();
+        }
+
+        async function refreshData() {
+            await Promise.all([loadCategories(), loadDashboard(), loadTransactions()]);
         }
 
         async function loadDashboard() {
             const data = await req('/transactions/dashboard');
             if (!data.totals) return;
-            document.getElementById('total-income').innerText = `$${Number(data.totals.total_income || 0).toFixed(2)}`;
-            document.getElementById('total-expense').innerText = `$${Number(data.totals.total_expense || 0).toFixed(2)}`;
-            document.getElementById('balance').innerText = `$${Number(data.balance || 0).toFixed(2)}`;
+
+            document.getElementById('total-income').innerText = `$${Number(data.totals.total_income || 0).toLocaleString()}`;
+            document.getElementById('total-expense').innerText = `$${Number(data.totals.total_expense || 0).toLocaleString()}`;
+            document.getElementById('balance').innerText = `$${Number(data.balance || 0).toLocaleString()}`;
+
+            updateCharts(data);
+            updateBudgets(data);
+        }
+
+        function updateCharts(data) {
+            const ctx = document.getElementById('mainChart').getContext('2d');
+            if (mainChart) mainChart.destroy();
+
+            mainChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Income', 'Expenses'],
+                    datasets: [{
+                        label: 'Amount ($)',
+                        data: [Number(data.totals.total_income || 0), Number(data.totals.total_expense || 0)],
+                        backgroundColor: ['#10b981', '#ef4444'],
+                        borderRadius: 12,
+                        barThickness: 60
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
+                        x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+                    }
+                }
+            });
+        }
+
+        function updateBudgets(data) {
+            const container = document.getElementById('budgets-list');
+            container.innerHTML = '';
+            if (data.expensesByCategory) {
+                data.expensesByCategory.forEach(cat => {
+                    const spent = Number(cat.spent || 0);
+                    const budget = Number(cat.budget || 1);
+                    const percent = Math.min(100, (spent / budget) * 100);
+                    const colorClass = percent > 90 ? 'bg-red-500' : 'bg-blue-500';
+                    container.innerHTML += `
+                        <div class="space-y-1">
+                            <div class="flex justify-between text-xs">
+                                <span class="text-slate-300 font-medium">${cat.name}</span>
+                                <span class="text-slate-500">$${spent.toFixed(0)} / $${budget.toFixed(0)}</span>
+                            </div>
+                            <div class="w-full bg-slate-800 rounded-full h-1.5">
+                                <div class="${colorClass} h-1.5 rounded-full" style="width: ${percent}%"></div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
         }
 
         async function loadCategories() {
             const categories = await req('/categories');
             const select = document.getElementById('t-category');
+            if (!select) return;
             select.innerHTML = '<option value="">Select Category</option>';
             if (Array.isArray(categories)) {
                 categories.forEach(c => {
@@ -313,23 +404,32 @@
         async function loadTransactions() {
             const txs = await req('/transactions');
             const tbody = document.getElementById('transactions-list');
+            if (!tbody) return;
             tbody.innerHTML = '';
             if (Array.isArray(txs)) {
                 txs.forEach(t => {
-                    const cls = t.category_type === 'income' ? 'success' : 'danger';
+                    const cls = t.category_type === 'income' ? 'text-emerald-400' : 'text-red-400';
                     const sign = t.category_type === 'income' ? '+' : '-';
-                    const receiptLink = t.receipt_url ? `<a href="${t.receipt_url}" target="_blank" style="color: var(--primary);">View</a>` : 'None';
+                    const receiptLink = t.receipt_url 
+                        ? `<a href="${t.receipt_url}" target="_blank" class="p-1 px-2 bg-slate-800 hover:bg-slate-700 rounded text-xs text-blue-400 transition-colors">View File</a>` 
+                        : '<span class="text-slate-600 text-xs">None</span>';
+                    
                     tbody.innerHTML += `
-          <tr>
-            <td>${new Date(t.date).toLocaleDateString()}</td>
-            <td>${t.description}</td>
-            <td>${t.category_name || 'Uncategorized'}</td>
-            <td class="${cls}">${sign}${t.currency || 'USD'} ${Number(t.amount).toFixed(2)}</td>
-            <td>${receiptLink}</td>
-            <td><button style="padding: 4px 8px; width: auto; background: transparent; border: 1px solid var(--danger); color: var(--danger);" onclick="deleteTx(${t.id})">Del</button></td>
-          </tr>
-        `;
+                        <tr class="border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors">
+                            <td class="py-4 text-slate-400">${new Date(t.date).toLocaleDateString()}</td>
+                            <td class="py-4 text-slate-200 font-medium">${t.description}</td>
+                            <td class="py-4"><span class="px-2 py-1 bg-slate-800 rounded-md text-xs text-slate-400">${t.category_name || 'Uncategorized'}</span></td>
+                            <td class="py-4 ${cls} font-semibold">${sign}${t.currency || 'USD'} ${Number(t.amount).toFixed(2)}</td>
+                            <td class="py-4">${receiptLink}</td>
+                            <td class="py-4 text-right">
+                                <button onclick="deleteTx(${t.id})" class="text-slate-600 hover:text-red-400 transition-colors p-1">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
                 });
+                lucide.createIcons();
             }
         }
 
@@ -340,27 +440,83 @@
             formData.append('description', document.getElementById('t-desc').value);
             formData.append('date', document.getElementById('t-date').value);
             formData.append('category_id', document.getElementById('t-category').value);
-
+            
             const receiptFile = document.getElementById('t-receipt').files[0];
-            if (receiptFile) {
-                formData.append('receipt', receiptFile);
-            }
+            if (receiptFile) formData.append('receipt', receiptFile);
+            
+            const btn = document.querySelector('button[type="submit"]');
+            const originalText = btn.innerText;
+            btn.innerText = 'Recording...';
+            btn.disabled = true;
 
             await req('/transactions', 'POST', formData, true);
+            
+            btn.innerText = originalText;
+            btn.disabled = false;
             document.getElementById('transaction-form').reset();
-            loadDashboard();
-            loadTransactions();
+            
+            // Re-set date after reset
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('t-date').value = today;
+
+            await refreshData();
         }
 
         async function deleteTx(id) {
-            if (confirm('Delete this transaction?')) {
+            if (confirm('Permanently delete this transaction?')) {
                 await req(`/transactions/${id}`, 'DELETE');
-                loadDashboard();
-                loadTransactions();
+                await refreshData();
+            }
+        }
+
+        async function getAIAnalysis() {
+            const btn = document.getElementById('ai-btn');
+            const result = document.getElementById('ai-result');
+            const originalText = btn.innerHTML;
+
+            btn.disabled = true;
+            btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Thinking...';
+            lucide.createIcons();
+
+            try {
+                const data = await req('/ai/analyze', 'POST');
+                result.innerHTML = data.analysis || data.error;
+                result.classList.remove('hidden');
+            } catch (err) {
+                result.innerHTML = "Analysis failed. Please check your Groq API key.";
+                result.classList.remove('hidden');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+                lucide.createIcons();
+            }
+        }
+        async function importCSV() {
+            const fileInput = document.getElementById('csv-file');
+            if (!fileInput.files[0]) return alert('Please select a CSV file');
+
+            const btn = document.getElementById('import-btn');
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Importing...';
+            lucide.createIcons();
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            try {
+                const data = await req('/transactions/import', 'POST', formData, true);
+                alert(data.message);
+                fileInput.value = '';
+                await refreshData();
+            } catch (err) {
+                alert('Import failed. Ensure CSV format: date,amount,description');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+                lucide.createIcons();
             }
         }
     </script>
-
 </body>
-
 </html>

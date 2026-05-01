@@ -1,11 +1,13 @@
+require('dotenv').config();
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const pool = require('../db');
+const { createDefaultCategories } = require('../utils/defaults');
 
 passport.use(new GoogleStrategy({
-    clientID: process.env.GOOGLE_CLIENT_ID || 'placeholder_client_id',
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET || 'placeholder_client_secret',
-    callbackURL: "/api/auth/google/callback"
+    clientID: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    callbackURL: "http://localhost:3000/api/auth/google/callback"
   },
   async (accessToken, refreshToken, profile, done) => {
     try {
@@ -22,6 +24,7 @@ passport.use(new GoogleStrategy({
           'INSERT INTO users (name, email, google_id) VALUES ($1, $2, $3) RETURNING *',
           [name, email, googleId]
         );
+        await createDefaultCategories(userResult.rows[0].id);
       } else if (!userResult.rows[0].google_id) {
         // Link google account to existing email account
         userResult = await pool.query(

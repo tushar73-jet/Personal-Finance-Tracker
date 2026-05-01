@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const pool = require('../db');
 const authMiddleware = require('../middleware/authMiddleware');
 const passport = require('../utils/passport');
+const { createDefaultCategories } = require('../utils/defaults');
 
 router.post('/register', async (req, res) => {
   try {
@@ -19,9 +20,11 @@ router.post('/register', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, salt);
 
     const newUser = await pool.query(
-      'INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id, name, email',
+      'INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING *',
       [name, email, hashedPassword]
     );
+
+    await createDefaultCategories(newUser.rows[0].id);
 
     res.status(201).json(newUser.rows[0]);
   } catch (err) {
