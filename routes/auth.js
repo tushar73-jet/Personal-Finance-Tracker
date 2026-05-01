@@ -84,24 +84,36 @@ router.get('/google', passport.authenticate('google', { scope: ['profile', 'emai
 router.get('/google/callback', 
   passport.authenticate('google', { failureRedirect: '/login', session: false }),
   (req, res) => {
-    // Generate JWT
-    const payload = {
-      user: {
-        id: req.user.id
+    try {
+      if (!req.user) {
+        return res.redirect('/?error=AuthenticationFailed');
       }
-    };
 
-    jwt.sign(
-      payload,
-      process.env.JWT_SECRET,
-      { expiresIn: '5d' },
-      (err, token) => {
-        if (err) throw err;
-        // Redirect to frontend with token
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-        res.redirect(`${frontendUrl}/?token=${token}`);
-      }
-    );
+      // Generate JWT
+      const payload = {
+        user: {
+          id: req.user.id
+        }
+      };
+
+      jwt.sign(
+        payload,
+        process.env.JWT_SECRET,
+        { expiresIn: '5d' },
+        (err, token) => {
+          if (err) {
+            console.error('JWT Sign Error in Google Auth:', err);
+            return res.redirect('/?error=TokenGenerationFailed');
+          }
+          // Redirect to frontend with token
+          const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+          res.redirect(`${frontendUrl}/?token=${token}`);
+        }
+      );
+    } catch (err) {
+      console.error('Google Callback Error:', err);
+      res.redirect('/?error=ServerError');
+    }
   }
 );
 
