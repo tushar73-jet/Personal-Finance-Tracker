@@ -367,6 +367,7 @@
                 }
             } catch (err) {
                 console.error('Currency conversion failed, using raw totals:', err);
+                if (baseCurrency !== 'USD') alert('Currency conversion API is currently unavailable. Displaying raw USD totals instead.');
                 totalIncome = Number(data.totals.total_income || 0);
                 totalExpense = Number(data.totals.total_expense || 0);
             }
@@ -512,6 +513,7 @@
         async function deleteTx(id) {
             if (confirm('Permanently delete this transaction?')) {
                 await req(`/transactions/${id}`, 'DELETE');
+                alert('Transaction deleted successfully!');
                 await refreshData();
             }
         }
@@ -541,6 +543,7 @@
         async function importCSV() {
             const fileInput = document.getElementById('csv-file');
             if (!fileInput.files[0]) return alert('Please select a CSV file');
+            if (!confirm('Are you sure you want to import this file? Please ensure it contains correct data. This cannot be easily undone.')) return;
 
             const btn = document.getElementById('import-btn');
             const originalText = btn.innerHTML;

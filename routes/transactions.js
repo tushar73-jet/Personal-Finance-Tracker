@@ -5,6 +5,7 @@ const path = require('path');
 const pool = require('../db');
 const authMiddleware = require('../middleware/authMiddleware');
 const { checkBudget } = require('../utils/notifications');
+const fs = require('fs');
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -179,7 +180,6 @@ router.get('/dashboard', authMiddleware, async (req, res) => {
 });
 
 const csv = require('csv-parser');
-const fs = require('fs');
 const pdf = require('pdf-parse');
 const Groq = require('groq-sdk');
 

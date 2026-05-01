@@ -21,7 +21,7 @@ const createDefaultCategories = async (userId) => {
 
     for (const cat of defaults) {
       await pool.query(
-        'INSERT INTO categories (user_id, name, type, budget) VALUES ($1, $2, $3, $4)',
+        'INSERT INTO categories (user_id, name, type, budget) VALUES ($1, $2, $3, $4) ON CONFLICT (user_id, name, type) DO NOTHING',
         [userId, cat.name, cat.type, cat.budget]
       );
     }
