@@ -98,7 +98,8 @@ router.get('/google/callback',
       (err, token) => {
         if (err) throw err;
         // Redirect to frontend with token
-        res.redirect(`/?token=${token}`);
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+        res.redirect(`${frontendUrl}/?token=${token}`);
       }
     );
   }
