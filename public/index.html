@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Personal Finance Tracker</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --text-color: #f8fafc;
+      --card-bg: #1e293b;
+      --primary: #3b82f6;
+      --success: #10b981;
+      --danger: #ef4444;
+      --border: #334155;
+    }
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+    }
+    .container {
+      width: 100%;
+      max-width: 800px;
+      padding: 2rem;
+    }
+    h1, h2 {
+      text-align: center;
+      font-weight: 600;
+    }
+    .card {
+      background: var(--card-bg);
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      margin-bottom: 2rem;
+      border: 1px solid var(--border);
+    }
+    input, select, button {
+      width: 100%;
+      padding: 0.75rem;
+      margin-bottom: 1rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg-color);
+      color: var(--text-color);
+      box-sizing: border-box;
+      font-family: 'Inter', sans-serif;
+    }
+    button {
+      background: var(--primary);
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: background 0.2s ease;
+    }
+    button:hover {
+      background: #2563eb;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 1rem;
+      text-align: center;
+    }
+    .stat {
+      background: var(--bg-color);
+      padding: 1.5rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+    .stat h3 { margin: 0 0 0.5rem 0; font-size: 1rem; color: #94a3b8; }
+    .stat p { margin: 0; font-size: 1.5rem; font-weight: 600; }
+    .success { color: var(--success); }
+    .danger { color: var(--danger); }
+    table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border); }
+    th { color: #94a3b8; font-weight: 400; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Personal Finance Tracker</h1>
+  
+  <div id="auth-section" class="card">
+    <h2>Login / Register</h2>
+    <input type="email" id="email" placeholder="Email" />
+    <input type="password" id="password" placeholder="Password" />
+    <button onclick="login()">Login</button>
+    <button onclick="register()" style="background: var(--card-bg); border: 1px solid var(--primary); color: var(--primary);">Register</button>
+  </div>
+
+  <div id="app-section" class="hidden">
+    <div class="card">
+      <h2>Dashboard</h2>
+      <div class="grid">
+        <div class="stat">
+          <h3>Total Income</h3>
+          <p id="total-income" class="success">$0.00</p>
+        </div>
+        <div class="stat">
+          <h3>Total Expenses</h3>
+          <p id="total-expense" class="danger">$0.00</p>
+        </div>
+        <div class="stat">
+          <h3>Balance</h3>
+          <p id="balance">$0.00</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Add Transaction</h2>
+      <input type="number" id="t-amount" placeholder="Amount" step="0.01" />
+      <input type="text" id="t-desc" placeholder="Description" />
+      <input type="date" id="t-date" />
+      <select id="t-category">
+        <option value="">Select Category</option>
+      </select>
+      <button onclick="addTransaction()">Add</button>
+    </div>
+
+    <div class="card">
+      <h2>Recent Transactions</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Description</th>
+            <th>Category</th>
+            <th>Amount</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="transactions-list"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  let token = localStorage.getItem('token');
+  const api = 'http://localhost:3000/api';
+
+  if (token) {
+    showApp();
+  }
+
+  async function req(path, method = 'GET', body = null) {
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const opts = { method, headers };
+    if (body) opts.body = JSON.stringify(body);
+    const res = await fetch(`${api}${path}`, opts);
+    if (res.status === 401) logout();
+    return res.json();
+  }
+
+  async function login() {
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const data = await req('/auth/login', 'POST', { email, password });
+    if (data.token) {
+      token = data.token;
+      localStorage.setItem('token', token);
+      showApp();
+    } else {
+      alert(data.error);
+    }
+  }
+
+  async function register() {
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const data = await req('/auth/register', 'POST', { name: email.split('@')[0], email, password });
+    if (data.id) {
+      alert('Registered! Please log in.');
+    } else {
+      alert(data.error);
+    }
+  }
+
+  function logout() {
+    token = null;
+    localStorage.removeItem('token');
+    document.getElementById('auth-section').classList.remove('hidden');
+    document.getElementById('app-section').classList.add('hidden');
+  }
+
+  async function showApp() {
+    document.getElementById('auth-section').classList.add('hidden');
+    document.getElementById('app-section').classList.remove('hidden');
+    await loadCategories();
+    await loadDashboard();
+    await loadTransactions();
+  }
+
+  async function loadDashboard() {
+    const data = await req('/transactions/dashboard');
+    document.getElementById('total-income').innerText = `$${Number(data.totals.total_income || 0).toFixed(2)}`;
+    document.getElementById('total-expense').innerText = `$${Number(data.totals.total_expense || 0).toFixed(2)}`;
+    document.getElementById('balance').innerText = `$${Number(data.balance || 0).toFixed(2)}`;
+  }
+
+  async function loadCategories() {
+    const categories = await req('/categories');
+    const select = document.getElementById('t-category');
+    select.innerHTML = '<option value="">Select Category</option>';
+    categories.forEach(c => {
+      select.innerHTML += `<option value="${c.id}">${c.name} (${c.type})</option>`;
+    });
+  }
+
+  async function loadTransactions() {
+    const txs = await req('/transactions');
+    const tbody = document.getElementById('transactions-list');
+    tbody.innerHTML = '';
+    txs.forEach(t => {
+      const cls = t.category_type === 'income' ? 'success' : 'danger';
+      const sign = t.category_type === 'income' ? '+' : '-';
+      tbody.innerHTML += `
+        <tr>
+          <td>${new Date(t.date).toLocaleDateString()}</td>
+          <td>${t.description}</td>
+          <td>${t.category_name || 'Uncategorized'}</td>
+          <td class="${cls}">${sign}$${Number(t.amount).toFixed(2)}</td>
+          <td><button style="padding: 4px 8px; width: auto;" onclick="deleteTx(${t.id})">Del</button></td>
+        </tr>
+      `;
+    });
+  }
+
+  async function addTransaction() {
+    const amount = document.getElementById('t-amount').value;
+    const description = document.getElementById('t-desc').value;
+    const date = document.getElementById('t-date').value;
+    const category_id = document.getElementById('t-category').value;
+    
+    await req('/transactions', 'POST', { amount, description, date, category_id: category_id || null });
+    loadDashboard();
+    loadTransactions();
+  }
+
+  async function deleteTx(id) {
+    await req(`/transactions/${id}`, 'DELETE');
+    loadDashboard();
+    loadTransactions();
+  }
+</script>
+
+</body>
+</html>
