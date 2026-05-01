@@ -174,70 +174,106 @@ router.get('/dashboard', authMiddleware, async (req, res) => {
 
 const csv = require('csv-parser');
 const fs = require('fs');
+const pdf = require('pdf-parse');
+const Groq = require('groq-sdk');
 
-// Import transactions from CSV
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY
+});
+
+// Import transactions from CSV or PDF
 router.post('/import', [authMiddleware, upload.single('file')], async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
-  const results = [];
   const filePath = req.file.path;
   const userId = req.user.user.id;
+  let transactionsToProcess = [];
 
   try {
-    // 1. Get all user categories for auto-categorization
     const categoriesResult = await pool.query('SELECT id, name, type FROM categories WHERE user_id = $1', [userId]);
     const categories = categoriesResult.rows;
 
-    fs.createReadStream(filePath)
-      .pipe(csv())
-      .on('data', (data) => results.push(data))
-      .on('end', async () => {
-        let importedCount = 0;
-        let duplicateCount = 0;
+    if (req.file.mimetype === 'application/pdf') {
+      // PDF Processing with AI
+      const dataBuffer = fs.readFileSync(filePath);
+      const pdfData = await pdf(dataBuffer);
+      const rawText = pdfData.text;
 
-        for (const row of results) {
-          // Expected columns: date, amount, description, currency (optional)
-          const { date, amount, description, currency = 'USD' } = row;
-          
-          if (!date || !amount || !description) continue;
-
-          // 2. Duplicate detection
-          const duplicate = await pool.query(
-            'SELECT id FROM transactions WHERE user_id = $1 AND date = $2 AND amount = $3 AND description = $4',
-            [userId, date, amount, description]
-          );
-
-          if (duplicate.rows.length > 0) {
-            duplicateCount++;
-            continue;
+      const chatCompletion = await groq.chat.completions.create({
+        messages: [
+          {
+            role: "system",
+            content: "You are a specialized financial data extractor. Extract transaction details (date, amount, description, currency) from bank statement text. Return ONLY a JSON array of objects. Example: [{\"date\":\"2024-01-01\",\"amount\":100,\"description\":\"Salary\",\"currency\":\"USD\"}]. If amount is an expense, keep it positive. Use YYYY-MM-DD for dates."
+          },
+          {
+            role: "user",
+            content: `Extract transactions from this text:\n${rawText.substring(0, 4000)}` // Limit text for token limits
           }
-
-          // 3. Simple auto-categorization logic
-          // Match description keywords to category names
-          let categoryId = null;
-          const descLower = description.toLowerCase();
-          const match = categories.find(c => descLower.includes(c.name.toLowerCase()));
-          if (match) categoryId = match.id;
-          else {
-            // Default to 'Other' or first expense category if not found
-            const other = categories.find(c => c.name.toLowerCase() === 'other');
-            categoryId = other ? other.id : (categories.find(c => c.type === 'expense')?.id || null);
-          }
-
-          // 4. Insert
-          await pool.query(
-            'INSERT INTO transactions (user_id, category_id, amount, currency, description, date) VALUES ($1, $2, $3, $4, $5, $6)',
-            [userId, categoryId, amount, currency, description, date]
-          );
-          importedCount++;
-        }
-
-        fs.unlinkSync(filePath); // Clean up uploaded file
-        res.json({ message: `Import complete. Imported: ${importedCount}, Duplicates skipped: ${duplicateCount}` });
+        ],
+        model: "llama3-8b-8192",
+        response_format: { type: "json_object" } // Using JSON mode if supported or just parsing
       });
+
+      // Simple parsing of AI response (handle potential JSON wrapping)
+      let aiContent = chatCompletion.choices[0].message.content;
+      try {
+        const parsed = JSON.parse(aiContent);
+        transactionsToProcess = Array.isArray(parsed) ? parsed : (parsed.transactions || []);
+      } catch (e) {
+        console.error('AI JSON Parse Error:', e);
+        // Fallback or error
+      }
+    } else {
+      // CSV Processing (Existing logic)
+      await new Promise((resolve, reject) => {
+        fs.createReadStream(filePath)
+          .pipe(csv())
+          .on('data', (data) => transactionsToProcess.push(data))
+          .on('end', resolve)
+          .on('error', reject);
+      });
+    }
+
+    let importedCount = 0;
+    let duplicateCount = 0;
+
+    for (const tx of transactionsToProcess) {
+      const { date, amount, description, currency = 'USD' } = tx;
+      if (!date || !amount || !description) continue;
+
+      const duplicate = await pool.query(
+        'SELECT id FROM transactions WHERE user_id = $1 AND date = $2 AND amount = $3 AND description = $4',
+        [userId, date, amount, description]
+      );
+
+      if (duplicate.rows.length > 0) {
+        duplicateCount++;
+        continue;
+      }
+
+      let categoryId = null;
+      const descLower = description.toLowerCase();
+      const match = categories.find(c => descLower.includes(c.name.toLowerCase()));
+      if (match) categoryId = match.id;
+      else {
+        const other = categories.find(c => c.name.toLowerCase() === 'other');
+        categoryId = other ? other.id : (categories.find(c => c.type === 'expense')?.id || null);
+      }
+
+      await pool.query(
+        'INSERT INTO transactions (user_id, category_id, amount, currency, description, date) VALUES ($1, $2, $3, $4, $5, $6)',
+        [userId, categoryId, amount, currency, description, date]
+      );
+      importedCount++;
+    }
+
+    fs.unlinkSync(filePath);
+    res.json({ message: `Import complete. Imported: ${importedCount}, Duplicates skipped: ${duplicateCount}` });
+
   } catch (err) {
     console.error('Import error:', err.message);
-    res.status(500).send('Server Error during import');
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    res.status(500).json({ error: 'Import failed: ' + err.message });
   }
 });
 

@@ -82,6 +82,20 @@
         </nav>
 
         <main class="max-w-7xl mx-auto px-6">
+            <!-- Stats Header -->
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-white">Financial Summary</h2>
+                <div class="flex items-center gap-2 glass px-4 py-2 rounded-xl">
+                    <span class="text-xs text-slate-500 uppercase font-bold tracking-widest">Base Currency</span>
+                    <select id="base-currency" onchange="refreshData()" class="bg-transparent text-white text-sm font-bold focus:outline-none cursor-pointer">
+                        <option value="USD">USD</option>
+                        <option value="INR">INR</option>
+                        <option value="EUR">EUR</option>
+                        <option value="GBP">GBP</option>
+                    </select>
+                </div>
+            </div>
+
             <!-- Stats Grid -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <div class="glass p-6 rounded-2xl relative overflow-hidden group">
@@ -327,13 +341,45 @@
 
         async function loadDashboard() {
             const data = await req('/transactions/dashboard');
+            const allTxs = await req('/transactions');
             if (!data.totals) return;
 
-            document.getElementById('total-income').innerText = `$${Number(data.totals.total_income || 0).toLocaleString()}`;
-            document.getElementById('total-expense').innerText = `$${Number(data.totals.total_expense || 0).toLocaleString()}`;
-            document.getElementById('balance').innerText = `$${Number(data.balance || 0).toLocaleString()}`;
+            const baseCurrency = document.getElementById('base-currency').value;
+            let totalIncome = 0;
+            let totalExpense = 0;
 
-            updateCharts(data);
+            try {
+                // Fetch live rates
+                const rateRes = await fetch(`https://api.exchangerate-api.com/v4/latest/${baseCurrency}`);
+                const rateData = await rateRes.json();
+                const rates = rateData.rates;
+
+                // Convert all transactions to base currency for accurate totals
+                if (Array.isArray(allTxs)) {
+                    allTxs.forEach(t => {
+                        const amount = Number(t.amount);
+                        const rate = rates[t.currency || 'USD'] || 1;
+                        const convertedAmount = amount / rate;
+
+                        if (t.category_type === 'income') totalIncome += convertedAmount;
+                        else totalExpense += convertedAmount;
+                    });
+                }
+            } catch (err) {
+                console.error('Currency conversion failed, using raw totals:', err);
+                totalIncome = Number(data.totals.total_income || 0);
+                totalExpense = Number(data.totals.total_expense || 0);
+            }
+
+            const balance = totalIncome - totalExpense;
+            const symbol = { 'USD': '$', 'INR': '₹', 'EUR': '€', 'GBP': '£' }[baseCurrency];
+
+            document.getElementById('total-income').innerText = `${symbol}${totalIncome.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            document.getElementById('total-expense').innerText = `${symbol}${totalExpense.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            document.getElementById('balance').innerText = `${symbol}${balance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+
+            // Update charts with converted data
+            updateCharts({ totals: { total_income: totalIncome, total_expense: totalExpense } });
             updateBudgets(data);
         }
 
