@@ -439,10 +439,11 @@
             const categories = await req('/categories');
             const select = document.getElementById('t-category');
             if (!select) return;
-            select.innerHTML = '<option value="">Select Category</option>';
+            select.innerHTML = '<option value="" disabled selected>Choose Category...</option>';
             if (Array.isArray(categories)) {
-                categories.forEach(c => {
-                    select.innerHTML += `<option value="${c.id}">${c.name} (${c.type})</option>`;
+                categories.sort((a, b) => a.type.localeCompare(b.type)).forEach(c => {
+                    const icon = c.type === 'income' ? '💰' : '💸';
+                    select.innerHTML += `<option value="${c.id}">${icon} ${c.name} (${c.type.toUpperCase()})</option>`;
                 });
             }
         }

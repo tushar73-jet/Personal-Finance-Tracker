@@ -8,7 +8,11 @@ const { checkBudget } = require('../utils/notifications');
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'public/uploads/');
+    const dir = 'public/uploads/';
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    cb(null, dir);
   },
   filename: (req, file, cb) => {
     cb(null, `${Date.now()}-${file.originalname}`);
@@ -48,17 +52,19 @@ router.post('/', [authMiddleware, upload.single('receipt')], async (req, res) =>
 
     const receipt_url = req.file ? `/uploads/${req.file.filename}` : null;
 
-    // Validate category belongs to user if category_id is provided
-    if (category_id && category_id !== 'null') {
-      const category = await pool.query('SELECT * FROM categories WHERE id = $1 AND user_id = $2', [category_id, req.user.user.id]);
-      if (category.rows.length === 0) {
-        return res.status(400).json({ error: 'Invalid category' });
-      }
+    // Validate category (Mandatory for production tracking)
+    if (!category_id || category_id === 'null' || category_id === '') {
+      return res.status(400).json({ error: 'Please select a category to track this transaction correctly.' });
+    }
+
+    const category = await pool.query('SELECT * FROM categories WHERE id = $1 AND user_id = $2', [category_id, req.user.user.id]);
+    if (category.rows.length === 0) {
+      return res.status(400).json({ error: 'Invalid category' });
     }
 
     const newTransaction = await pool.query(
       'INSERT INTO transactions (user_id, category_id, amount, currency, description, date, receipt_url) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-      [req.user.user.id, (category_id && category_id !== 'null') ? category_id : null, amount, currency || 'USD', description, date, receipt_url]
+      [req.user.user.id, category_id, amount, currency || 'USD', description, date, receipt_url]
     );
 
     res.status(201).json(newTransaction.rows[0]);
@@ -177,9 +183,10 @@ const fs = require('fs');
 const pdf = require('pdf-parse');
 const Groq = require('groq-sdk');
 
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY
-});
+let groq = null;
+if (process.env.GROQ_API_KEY) {
+  groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+}
 
 // Import transactions from CSV or PDF
 router.post('/import', [authMiddleware, upload.single('file')], async (req, res) => {
@@ -194,6 +201,11 @@ router.post('/import', [authMiddleware, upload.single('file')], async (req, res)
     const categories = categoriesResult.rows;
 
     if (req.file.mimetype === 'application/pdf') {
+      if (!groq) {
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+        return res.status(500).json({ error: 'AI features are not configured. Please add GROQ_API_KEY to your environment variables.' });
+      }
+      
       // PDF Processing with AI
       const dataBuffer = fs.readFileSync(filePath);
       const pdfData = await pdf(dataBuffer);

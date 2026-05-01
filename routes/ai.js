@@ -7,11 +7,13 @@ const authMiddleware = require('../middleware/authMiddleware');
 
 console.log('AI Route: Initializing with Groq Key status:', process.env.GROQ_API_KEY ? 'Present' : 'MISSING');
 
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY
-});
+let groq = null;
+if (process.env.GROQ_API_KEY) {
+  groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+}
 
 router.post('/analyze', authMiddleware, async (req, res) => {
+  if (!groq) return res.status(500).json({ error: 'AI features are not configured. Please add GROQ_API_KEY to your environment variables.' });
   try {
     // 1. Fetch user's recent transactions
     const transactions = await pool.query(
