@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: personal-finance-tracker
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: PORT
+        value: 3000
+      - key: NODE_ENV
+        value: production
+      - key: DB_DATABASE
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+databases:
+  - name: finance-db
+    databaseName: personal_finance
+    plan: free
