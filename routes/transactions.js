@@ -222,7 +222,7 @@ router.post('/import', [authMiddleware, upload.single('file')], async (req, res)
             content: `Extract transactions from this text:\n${rawText.substring(0, 4000)}` // Limit text for token limits
           }
         ],
-        model: "llama3-8b-8192",
+        model: "llama-3.1-8b-instant",
         response_format: { type: "json_object" } // Using JSON mode if supported or just parsing
       });
 

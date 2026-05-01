@@ -47,7 +47,7 @@ router.post('/analyze', authMiddleware, async (req, res) => {
           content: `Here are my recent transactions:\n${txData}\n\nPlease provide a short summary and 3 tips.`
         }
       ],
-      model: "llama3-8b-8192",
+      model: "llama-3.1-8b-instant",
     });
 
     res.json({ analysis: chatCompletion.choices[0].message.content });
