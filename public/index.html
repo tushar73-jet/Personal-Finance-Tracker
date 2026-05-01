@@ -96,10 +96,13 @@
     <input type="password" id="password" placeholder="Password" />
     <button onclick="login()">Login</button>
     <button onclick="register()" style="background: var(--card-bg); border: 1px solid var(--primary); color: var(--primary);">Register</button>
+    <hr style="border: 0; border-top: 1px solid var(--border); margin: 1rem 0;">
+    <button onclick="window.location.href='/api/auth/google'" style="background: #db4437;">Login with Google</button>
   </div>
 
   <div id="app-section" class="hidden">
     <div class="card">
+      <button onclick="logout()" style="float: right; width: auto; background: transparent; color: var(--danger); border: none;">Logout</button>
       <h2>Dashboard</h2>
       <div class="grid">
         <div class="stat">
@@ -119,13 +122,27 @@
 
     <div class="card">
       <h2>Add Transaction</h2>
-      <input type="number" id="t-amount" placeholder="Amount" step="0.01" />
-      <input type="text" id="t-desc" placeholder="Description" />
-      <input type="date" id="t-date" />
-      <select id="t-category">
-        <option value="">Select Category</option>
-      </select>
-      <button onclick="addTransaction()">Add</button>
+      <form id="transaction-form" onsubmit="event.preventDefault(); addTransaction();">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <input type="number" id="t-amount" placeholder="Amount" step="0.01" required />
+          <select id="t-currency">
+            <option value="USD">USD</option>
+            <option value="EUR">EUR</option>
+            <option value="INR">INR</option>
+            <option value="GBP">GBP</option>
+          </select>
+        </div>
+        <input type="text" id="t-desc" placeholder="Description" required />
+        <input type="date" id="t-date" required />
+        <select id="t-category">
+          <option value="">Select Category</option>
+        </select>
+        <div style="margin-bottom: 1rem;">
+          <label for="t-receipt" style="display: block; margin-bottom: 0.5rem; color: #94a3b8;">Upload Receipt</label>
+          <input type="file" id="t-receipt" accept="image/*,application/pdf" style="padding: 0.5rem;" />
+        </div>
+        <button type="submit">Add Transaction</button>
+      </form>
     </div>
 
     <div class="card">
@@ -137,6 +154,7 @@
             <th>Description</th>
             <th>Category</th>
             <th>Amount</th>
+            <th>Receipt</th>
             <th>Action</th>
           </tr>
         </thead>
@@ -147,18 +165,36 @@
 </div>
 
 <script>
+  // Check for token in URL (from Google OAuth callback)
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlToken = urlParams.get('token');
+  if (urlToken) {
+    localStorage.setItem('token', urlToken);
+    window.history.replaceState({}, document.title, "/");
+  }
+
   let token = localStorage.getItem('token');
-  const api = 'http://localhost:3000/api';
+  const api = '/api';
 
   if (token) {
     showApp();
   }
 
-  async function req(path, method = 'GET', body = null) {
-    const headers = { 'Content-Type': 'application/json' };
+  async function req(path, method = 'GET', body = null, isFormData = false) {
+    const headers = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
+    
     const opts = { method, headers };
-    if (body) opts.body = JSON.stringify(body);
+    
+    if (body) {
+      if (isFormData) {
+        opts.body = body;
+      } else {
+        headers['Content-Type'] = 'application/json';
+        opts.body = JSON.stringify(body);
+      }
+    }
+    
     const res = await fetch(`${api}${path}`, opts);
     if (res.status === 401) logout();
     return res.json();
@@ -184,7 +220,7 @@
     if (data.id) {
       alert('Registered! Please log in.');
     } else {
-      alert(data.error);
+      alert(data.error || 'Registration failed');
     }
   }
 
@@ -205,6 +241,7 @@
 
   async function loadDashboard() {
     const data = await req('/transactions/dashboard');
+    if (!data.totals) return;
     document.getElementById('total-income').innerText = `$${Number(data.totals.total_income || 0).toFixed(2)}`;
     document.getElementById('total-expense').innerText = `$${Number(data.totals.total_expense || 0).toFixed(2)}`;
     document.getElementById('balance').innerText = `$${Number(data.balance || 0).toFixed(2)}`;
@@ -214,45 +251,61 @@
     const categories = await req('/categories');
     const select = document.getElementById('t-category');
     select.innerHTML = '<option value="">Select Category</option>';
-    categories.forEach(c => {
-      select.innerHTML += `<option value="${c.id}">${c.name} (${c.type})</option>`;
-    });
+    if (Array.isArray(categories)) {
+      categories.forEach(c => {
+        select.innerHTML += `<option value="${c.id}">${c.name} (${c.type})</option>`;
+      });
+    }
   }
 
   async function loadTransactions() {
     const txs = await req('/transactions');
     const tbody = document.getElementById('transactions-list');
     tbody.innerHTML = '';
-    txs.forEach(t => {
-      const cls = t.category_type === 'income' ? 'success' : 'danger';
-      const sign = t.category_type === 'income' ? '+' : '-';
-      tbody.innerHTML += `
-        <tr>
-          <td>${new Date(t.date).toLocaleDateString()}</td>
-          <td>${t.description}</td>
-          <td>${t.category_name || 'Uncategorized'}</td>
-          <td class="${cls}">${sign}$${Number(t.amount).toFixed(2)}</td>
-          <td><button style="padding: 4px 8px; width: auto;" onclick="deleteTx(${t.id})">Del</button></td>
-        </tr>
-      `;
-    });
+    if (Array.isArray(txs)) {
+      txs.forEach(t => {
+        const cls = t.category_type === 'income' ? 'success' : 'danger';
+        const sign = t.category_type === 'income' ? '+' : '-';
+        const receiptLink = t.receipt_url ? `<a href="${t.receipt_url}" target="_blank" style="color: var(--primary);">View</a>` : 'None';
+        tbody.innerHTML += `
+          <tr>
+            <td>${new Date(t.date).toLocaleDateString()}</td>
+            <td>${t.description}</td>
+            <td>${t.category_name || 'Uncategorized'}</td>
+            <td class="${cls}">${sign}${t.currency || 'USD'} ${Number(t.amount).toFixed(2)}</td>
+            <td>${receiptLink}</td>
+            <td><button style="padding: 4px 8px; width: auto; background: transparent; border: 1px solid var(--danger); color: var(--danger);" onclick="deleteTx(${t.id})">Del</button></td>
+          </tr>
+        `;
+      });
+    }
   }
 
   async function addTransaction() {
-    const amount = document.getElementById('t-amount').value;
-    const description = document.getElementById('t-desc').value;
-    const date = document.getElementById('t-date').value;
-    const category_id = document.getElementById('t-category').value;
+    const formData = new FormData();
+    formData.append('amount', document.getElementById('t-amount').value);
+    formData.append('currency', document.getElementById('t-currency').value);
+    formData.append('description', document.getElementById('t-desc').value);
+    formData.append('date', document.getElementById('t-date').value);
+    formData.append('category_id', document.getElementById('t-category').value);
     
-    await req('/transactions', 'POST', { amount, description, date, category_id: category_id || null });
+    const receiptFile = document.getElementById('t-receipt').files[0];
+    if (receiptFile) {
+      formData.append('receipt', receiptFile);
+    }
+    
+    await req('/transactions', 'POST', formData, true);
+    document.getElementById('transaction-form').reset();
     loadDashboard();
     loadTransactions();
   }
 
   async function deleteTx(id) {
-    await req(`/transactions/${id}`, 'DELETE');
-    loadDashboard();
-    loadTransactions();
+    if (confirm('Delete this transaction?')) {
+      await req(`/transactions/${id}`, 'DELETE');
+      loadDashboard();
+      loadTransactions();
+    }
   }
 </script>
 

@@ -4,6 +4,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const pool = require('../db');
 const authMiddleware = require('../middleware/authMiddleware');
+const passport = require('../utils/passport');
 
 router.post('/register', async (req, res) => {
   try {
@@ -73,5 +74,31 @@ router.get('/profile', authMiddleware, async (req, res) => {
     res.status(500).send('Server Error');
   }
 });
+
+// Google OAuth
+router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+
+router.get('/google/callback', 
+  passport.authenticate('google', { failureRedirect: '/login', session: false }),
+  (req, res) => {
+    // Generate JWT
+    const payload = {
+      user: {
+        id: req.user.id
+      }
+    };
+
+    jwt.sign(
+      payload,
+      process.env.JWT_SECRET,
+      { expiresIn: '5d' },
+      (err, token) => {
+        if (err) throw err;
+        // Redirect to frontend with token
+        res.redirect(`/?token=${token}`);
+      }
+    );
+  }
+);
 
 module.exports = router;

@@ -1,7 +1,21 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
+const path = require('path');
 const pool = require('../db');
 const authMiddleware = require('../middleware/authMiddleware');
+const { checkBudget } = require('../utils/notifications');
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'public/uploads/');
+  },
+  filename: (req, file, cb) => {
+    cb(null, `${Date.now()}-${file.originalname}`);
+  }
+});
+
+const upload = multer({ storage });
 
 // Get all transactions for a user (with optional filtering)
 router.get('/', authMiddleware, async (req, res) => {
@@ -22,12 +36,13 @@ router.get('/', authMiddleware, async (req, res) => {
 });
 
 // Add a transaction
-router.post('/', authMiddleware, async (req, res) => {
+router.post('/', [authMiddleware, upload.single('receipt')], async (req, res) => {
   try {
-    const { category_id, amount, description, date } = req.body;
+    const { category_id, amount, description, date, currency } = req.body;
+    const receipt_url = req.file ? `/uploads/${req.file.filename}` : null;
 
     // Validate category belongs to user if category_id is provided
-    if (category_id) {
+    if (category_id && category_id !== 'null') {
       const category = await pool.query('SELECT * FROM categories WHERE id = $1 AND user_id = $2', [category_id, req.user.user.id]);
       if (category.rows.length === 0) {
         return res.status(400).json({ error: 'Invalid category' });
@@ -35,11 +50,16 @@ router.post('/', authMiddleware, async (req, res) => {
     }
 
     const newTransaction = await pool.query(
-      'INSERT INTO transactions (user_id, category_id, amount, description, date) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [req.user.user.id, category_id || null, amount, description, date]
+      'INSERT INTO transactions (user_id, category_id, amount, currency, description, date, receipt_url) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+      [req.user.user.id, (category_id && category_id !== 'null') ? category_id : null, amount, currency || 'USD', description, date, receipt_url]
     );
 
     res.status(201).json(newTransaction.rows[0]);
+
+    // Check budget in background
+    if (category_id && category_id !== 'null') {
+      checkBudget(req.user.user.id, category_id);
+    }
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server Error');
@@ -47,17 +67,18 @@ router.post('/', authMiddleware, async (req, res) => {
 });
 
 // Update a transaction
-router.put('/:id', authMiddleware, async (req, res) => {
+router.put('/:id', [authMiddleware, upload.single('receipt')], async (req, res) => {
   try {
     const { id } = req.params;
-    const { category_id, amount, description, date } = req.body;
+    const { category_id, amount, description, date, currency } = req.body;
+    const receipt_url = req.file ? `/uploads/${req.file.filename}` : undefined;
 
     const transaction = await pool.query('SELECT * FROM transactions WHERE id = $1 AND user_id = $2', [id, req.user.user.id]);
     if (transaction.rows.length === 0) {
       return res.status(404).json({ error: 'Transaction not found' });
     }
 
-    if (category_id) {
+    if (category_id && category_id !== 'null') {
       const category = await pool.query('SELECT * FROM categories WHERE id = $1 AND user_id = $2', [category_id, req.user.user.id]);
       if (category.rows.length === 0) {
         return res.status(400).json({ error: 'Invalid category' });
@@ -68,13 +89,22 @@ router.put('/:id', authMiddleware, async (req, res) => {
       `UPDATE transactions SET 
         category_id = COALESCE($1, category_id), 
         amount = COALESCE($2, amount), 
-        description = COALESCE($3, description), 
-        date = COALESCE($4, date) 
-       WHERE id = $5 AND user_id = $6 RETURNING *`,
-      [category_id, amount, description, date, id, req.user.user.id]
+        currency = COALESCE($3, currency),
+        description = COALESCE($4, description), 
+        date = COALESCE($5, date),
+        receipt_url = COALESCE($6, receipt_url)
+       WHERE id = $7 AND user_id = $8 RETURNING *`,
+      [(category_id && category_id !== 'null') ? category_id : null, amount, currency, description, date, receipt_url, id, req.user.user.id]
     );
 
     res.json(updatedTransaction.rows[0]);
+
+    // Check budget in background
+    if (category_id && category_id !== 'null') {
+      checkBudget(req.user.user.id, category_id);
+    } else if (transaction.rows[0].category_id) {
+      checkBudget(req.user.user.id, transaction.rows[0].category_id);
+    }
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server Error');
